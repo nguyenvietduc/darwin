@@ -75,7 +75,7 @@ float currStep = 1;
 
 void change_current_dir()
 {
-    char exepath[1024] = {0};
+	char exepath[1024] = {0};
     if(readlink("/proc/self/exe", exepath, sizeof(exepath)) != -1)
     {
         if(chdir(dirname(exepath)))
@@ -123,16 +123,16 @@ void StepUp(void);
 
 int main(void)
 {
-//	int i = 0;
-    signal(SIGABRT, &sighandler);
-    signal(SIGTERM, &sighandler);
-    signal(SIGQUIT, &sighandler);
-    signal(SIGINT, &sighandler);
+	// Signal Hanglers
+	signal(SIGABRT, &sighandler);
+	signal(SIGTERM, &sighandler);
+	signal(SIGQUIT, &sighandler);
+	signal(SIGINT, &sighandler);
 
     change_current_dir();
 
+	// ????? the init path cannot be found?
     minIni* ini = new minIni(INI_FILE_PATH);
-
    
     //////////////////// Framework Initialize ////////////////////////////
     if(MotionManager::GetInstance()->Initialize(&cm730) == false)
@@ -193,18 +193,24 @@ int main(void)
 	Walking::GetInstance()->m_Joint.SetEnableLowerBody(true,true);
 
 	while(Action::GetInstance()->IsRunning()) usleep(8*1000);
+
+	/*
+	Should we have a map of all joints? Will we have to init all joints before running traj?
+	Where should I keep the map?
+	*/
+
 	// initializing all my joints to my initial position
 
 	Action::GetInstance()->m_Joint.SetAngle(1,0);
 	Action::GetInstance()->m_Joint.SetAngle(3,-40);
 	Action::GetInstance()->m_Joint.SetAngle(5,90);
-	Action::GetInstance()->m_Joint.SetAngle(23,30);
+	//Action::GetInstance()->m_Joint.SetAngle(23,30); right finger 
 
 	//left trajectories
 	Action::GetInstance()->m_Joint.SetAngle(2,0);
 	Action::GetInstance()->m_Joint.SetAngle(4,40);
 	Action::GetInstance()->m_Joint.SetAngle(6,90);
-	Action::GetInstance()->m_Joint.SetAngle(24,-20);
+	//Action::GetInstance()->m_Joint.SetAngle(24,-20);
 
 	Action::GetInstance()->m_Joint.SetAngle(19,0);
 	Action::GetInstance()->m_Joint.SetAngle(20,0);
@@ -294,12 +300,16 @@ int main(void)
 		shoulderPR =  lip(x1,xp,shoulderPR_loc);
 		shoulderRR =  lip(x1,xp,shoulderRR_loc);
 		elbowR =  lip(x1,xp,elbowR_loc);
-		fingerR =  lip(x1,xp,fingerR_loc);
+
+		/*
+		Do we use the same x_position for all joints when doing lip?
+		*/
+		//fingerR =  lip(x1,xp,fingerR_loc);
 		// generating the left hand trajectories
 		shoulderPL =  lip(x1,xp,shoulderPL_loc);
 		shoulderRL =  lip(x1,xp,shoulderRL_loc);
 		elbowL =  lip(x1,xp,elbowL_loc);
-		fingerL =  lip(x1,xp,fingerL_loc);
+		//fingerL =  lip(x1,xp,fingerL_loc);
 
 		usleep(1000);
 //		std::cout<< "shoulderPL :" << shoulderPL <<"\n";
@@ -311,13 +321,15 @@ int main(void)
 		Action::GetInstance()->m_Joint.SetAngle(1,shoulderPR);
 		Action::GetInstance()->m_Joint.SetAngle(3,shoulderRR);
 		Action::GetInstance()->m_Joint.SetAngle(5,elbowR);
-		Action::GetInstance()->m_Joint.SetAngle(23,fingerR);
+		//Action::GetInstance()->m_Joint.SetAngle(23,fingerR);
 
 		//left trajectories
 		Action::GetInstance()->m_Joint.SetAngle(2,shoulderPL);
 		Action::GetInstance()->m_Joint.SetAngle(4,shoulderRL);
 		Action::GetInstance()->m_Joint.SetAngle(6,elbowL);
-		Action::GetInstance()->m_Joint.SetAngle(24,fingerL);
+		//Action::GetInstance()->m_Joint.SetAngle(24,fingerL);
+
+		// NOTE: get a map of servo and servo ID
 
 	}
 
