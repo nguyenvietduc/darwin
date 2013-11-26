@@ -50,9 +50,9 @@ LinuxCM730 linux_cm730(U2D_DEV_NAME0);
 CM730 cm730(&linux_cm730);
 
 // Define trajectory here
-int lsp_traj[] = { 0, 0};
-int lsr_traj[] = { -512, 512};
-int lep_traj[] = { 0, 0 };
+int lsp_traj[] = { 0, 1024, -200, -700 };
+int lsr_traj[] = { -512, 0, -570, 0 };
+int lep_traj[] = { -128, 0, 0, 0 };
 
 // Function prototypes
 void interpolate(int[], int[], int, int, int[], int);
@@ -308,6 +308,10 @@ void hoseHandling()
     moveBothArms(arms, delta, 100);
     getchar();
   }
+
+  getCurrentRightArmPos(arms);
+  getCurrentLeftArmPos(arms + 3);
+  gotoInitBothArmsPos(arms, 100);
 
 
 /*
