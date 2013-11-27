@@ -59,11 +59,11 @@ CM730 cm730(&linux_cm730);
 
 // Define trajectory here (absolute values)
 int rsp_traj[] = { RSP_INIT, 2050, -1, -1 };
-int rsr_traj[] = { RSR_INIT, -1, 1218, -1 };
+int rsr_traj[] = { RSR_INIT, -1, 1235, -1 };
 int rep_traj[] = { REP_INIT, 687, -1, -1 };
 
 int lsp_traj[] = { LSP_INIT, 2101, -1, -1 };
-int lsr_traj[] = { LSR_INIT, -1, 2890, -1 };
+int lsr_traj[] = { LSR_INIT, -1, 2875, -1 };
 int lep_traj[] = { LEP_INIT, 3383, -1, -1 };
 
 int rhr_traj[] = { RHR_INIT, -1, -1, -1 };
@@ -117,11 +117,14 @@ int main()
   cm730.WriteWord(JointData::ID_L_SHOULDER_PITCH, MX28::P_TORQUE_ENABLE, 0, 0);
   cm730.WriteWord(JointData::ID_L_SHOULDER_ROLL,  MX28::P_TORQUE_ENABLE, 0, 0);
   cm730.WriteWord(JointData::ID_L_ELBOW,          MX28::P_TORQUE_ENABLE, 0, 0);
+
+  cm730.WriteWord(JointData::ID_R_HIP_ROLL,  MX28::P_TORQUE_ENABLE, 0, 0);
+  cm730.WriteWord(JointData::ID_L_HIP_ROLL,     MX28::P_TORQUE_ENABLE, 0, 0);
   
   int i;
   
   // Read current positions of upper body
-  int body[6] = {0,0,0,0,0,0,0,0};
+  int body[8] = {0,0,0,0,0,0,0,0};
 
   getCurrentRightArmPos(body);
   getCurrentLeftArmPos(body + 3);
@@ -182,8 +185,7 @@ void getCurrentLeftArmPos(int leftArm[])
   }
 }
 
-void getCurrentPitchPos(int pitch[])
-{
+void getCurrentPitchPos(int pitch[]) {
   int value;
   if (cm730.ReadWord(JointData::ID_R_HIP_ROLL, MX28::P_PRESENT_POSITION_L, &value, 0) == CM730::SUCCESS)
   {

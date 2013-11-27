@@ -41,6 +41,9 @@
 #define LSR_INIT 2560
 #define LEP_INIT 3030
 
+#define RHR_INIT 2051
+#define LHR_INIT 2040
+
 // Namespace
 using namespace Robot;
 
@@ -50,12 +53,17 @@ LinuxCM730 linux_cm730(U2D_DEV_NAME0);
 CM730 cm730(&linux_cm730);
 
 // Define trajectory here
-int lsp_traj[] = { 0, 1024, -200, -700 };
-int lsr_traj[] = { -512, 0, -570, 0 };
-int lep_traj[] = { -128, 0, 0, 0 };
+int lsp_traj[] = { 0, 1024, -200, -700, 400, -400, 400, -400 };
+int lsr_traj[] = { -512, 0, -570, 0, 0, 0, 0, 0 };
+int lep_traj[] = { -128, 0, -380, 0, 0, 0, 0, 0 };
 
 // Function prototypes
 void interpolate(int[], int[], int, int, int[], int);
+
+void getCurrentPitchPos(int[]);
+void gotoPitchInitPos(int[], int duration);
+void movePitch(int[],int[],int);
+void movePitchAbsolute(int[]);
 
 void getCurrentRightArmPos(int[]);
 void moveRightArm(int[], int[], int);
@@ -70,6 +78,10 @@ void gotoInitLeftArmPos(int[], int);
 void moveBothArms(int[], int[], int);
 void moveBothArmsPosAbsolute(int[]);
 void gotoInitBothArmsPos(int[], int);
+
+void moveBody(int[],int[],int);
+void moveBodyAbsolute(int[]);
+void gotoInitPos(int[], int);
 
 void hoseHandling(void);
 
@@ -97,19 +109,39 @@ int main()
   cm730.WriteWord(JointData::ID_L_SHOULDER_ROLL,  MX28::P_TORQUE_ENABLE, 0, 0);
   cm730.WriteWord(JointData::ID_L_ELBOW,          MX28::P_TORQUE_ENABLE, 0, 0);
   
+  cm730.WriteWord(JointData::ID_R_HIP_ROLL,  MX28::P_TORQUE_ENABLE, 0, 0);
+  cm730.WriteWord(JointData::ID_L_HIP_ROLL,          MX28::P_TORQUE_ENABLE, 0, 0);
+
+
+  // Read current positions of upper body
+  int body[8] = {0,0,0,0,0,0,0,0};
+
+  getCurrentRightArmPos(body);
+  getCurrentLeftArmPos(body + 3);
+  getCurrentPitchPos(body + 6);
+  usleep(SIM_TIME_U);
+  gotoInitPos(body,100);
+  
+
+/*
   int i;
+
+  int pitch[2] = {0,0};
+  getCurrentPitchPos(pitch);
+  gotoPitchInitPos(pitch,100);
   
   // Read current positions of right arm joints
   int arms[6] = {0,0,0,0,0,0};
 
   int rightArm[3] = {0,0,0};
   getCurrentRightArmPos(arms);
-  usleep(20000);
 
   // Read current positions of right arm joints
   int leftArm[3] = {0,0,0};
   getCurrentLeftArmPos(arms + 3);
   usleep(20000);
+
+  */
 
   /*
   for (i = 0; i<6; i++)
@@ -128,12 +160,71 @@ int main()
   // gotoInitLeftArmPos(leftArm, 100);
 
   // Goto init position for both arms
-  gotoInitBothArmsPos(arms, 100);
+  // gotoInitBothArmsPos(arms, 100);
 
   hoseHandling();
 
   usleep(20000);
 }
+
+void gotoInitPos(int body[], int duration)
+{
+  int delta[8] = {0,0,0,0,0,0,0,0};
+
+  // Delta angles
+  delta[0] = RSP_INIT - body[0];
+  delta[1] = RSR_INIT - body[1];
+  delta[2] = REP_INIT - body[2];
+  delta[3] = LSP_INIT - body[3];
+  delta[4] = LSR_INIT - body[4];
+  delta[5] = LEP_INIT - body[5];
+  delta[6] = RHR_INIT - body[6];
+  delta[7] = LHR_INIT - body[7];
+
+  //
+  moveBody(body, delta, duration);
+ 
+}
+
+void moveBody(int init[], int delta[], int duration)
+{
+  int current_pos[8] = {0,0,0,0,0,0,0,0};
+  int current_time = 0;
+
+  while (current_time < duration)
+  {
+    interpolate(init, delta, duration, current_time, current_pos, 8);
+    moveBodyAbsolute(current_pos);
+    current_time++;
+    usleep(SIM_TIME_U);
+  }
+}
+
+void moveBodyAbsolute(int current_pos[])
+{
+  cm730.WriteWord(JointData::ID_R_SHOULDER_PITCH, MX28::P_GOAL_POSITION_L, current_pos[0], 0);
+  cm730.WriteWord(JointData::ID_R_SHOULDER_ROLL, MX28::P_GOAL_POSITION_L, current_pos[1], 0);
+  cm730.WriteWord(JointData::ID_R_ELBOW, MX28::P_GOAL_POSITION_L, current_pos[2], 0);
+  cm730.WriteWord(JointData::ID_L_SHOULDER_PITCH, MX28::P_GOAL_POSITION_L, current_pos[3], 0);
+  cm730.WriteWord(JointData::ID_L_SHOULDER_ROLL, MX28::P_GOAL_POSITION_L, current_pos[4], 0);
+  cm730.WriteWord(JointData::ID_L_ELBOW, MX28::P_GOAL_POSITION_L, current_pos[5], 0);
+  cm730.WriteWord(JointData::ID_R_HIP_ROLL, MX28::P_GOAL_POSITION_L, current_pos[6], 0);
+  cm730.WriteWord(JointData::ID_L_HIP_ROLL, MX28::P_GOAL_POSITION_L, current_pos[7], 0);
+}
+
+void getCurrentPitchPos(int pitch[]) {
+  int value;
+  if (cm730.ReadWord(JointData::ID_R_HIP_ROLL, MX28::P_PRESENT_POSITION_L, &value, 0) == CM730::SUCCESS)
+  {
+    pitch[0] = value;
+  }
+  
+  if (cm730.ReadWord(JointData::ID_L_HIP_ROLL, MX28::P_PRESENT_POSITION_L, &value, 0) == CM730::SUCCESS)
+  {
+    pitch[1] = value;
+  }
+}
+
 
 void getCurrentRightArmPos(int rightArm[])
 {
@@ -173,6 +264,17 @@ void getCurrentLeftArmPos(int leftArm[])
   }
 }
 
+void gotoPitchInitPos(int pitch[], int duration)
+{
+  int delta[2] = {0,0};
+
+  // Delta Angles
+  delta[0] = RHR_INIT - pitch[0];
+  delta[1] = LHR_INIT - pitch[1];
+
+  movePitch(pitch, delta, duration);
+}
+
 void gotoInitRightArmPos(int rightArm[], int duration)
 {
   int delta[3] = {0,0,0};
@@ -183,6 +285,26 @@ void gotoInitRightArmPos(int rightArm[], int duration)
   delta[2] = REP_INIT - rightArm[2];
 
   moveRightArm(rightArm, delta, duration);
+}
+
+void movePitch(int init[], int delta[], int duration)
+{
+  int current_pos[2] = {0,0};
+  int current_time = 0;
+  double step = (double) delta[0] / duration;
+
+  printf("%d %d %f\n", delta[0], delta[1], step);
+  getchar();
+
+  while (current_time < duration)
+  {
+//    interpolate(init, delta, duration, current_time, current_pos, 2);
+    current_pos[0] = (int) (0.5 + current_time * step + init[0]);
+    current_pos[1] = (int) (0.5 - current_time * step + init[1]);
+    movePitchAbsolute(current_pos);
+    current_time++;
+    usleep(SIM_TIME_U);
+  }
 }
 
 void moveRightArm(int init[], int delta[], int duration)
@@ -264,6 +386,12 @@ void interpolate(int arm[], int delta[], int duration, int current_time, int cur
   }
 }
 
+void movePitchAbsolute(int current_pos[])
+{
+  cm730.WriteWord(JointData::ID_R_HIP_ROLL, MX28::P_GOAL_POSITION_L, current_pos[0], 0);
+  cm730.WriteWord(JointData::ID_L_HIP_ROLL, MX28::P_GOAL_POSITION_L, current_pos[1], 0);
+}
+
 void moveRightArmPosAbsolute(int current_pos[])
 {
   cm730.WriteWord(JointData::ID_R_SHOULDER_PITCH, MX28::P_GOAL_POSITION_L, current_pos[0], 0);
@@ -298,14 +426,16 @@ void hoseHandling()
   getchar();
 
   int arms[6] = {0,0,0,0,0,0};
-
+  int speed = 100;
   for (step = 0; step < total; step++)
   {
     printf("Step %d\n", step + 1);
     getCurrentRightArmPos(arms);
     getCurrentLeftArmPos(arms + 3);
-    int delta[] = {0,0,0, lsp_traj[step], lsr_traj[step], lep_traj[0]};
-    moveBothArms(arms, delta, 100);
+    int delta[] = {0,0,0, lsp_traj[step], lsr_traj[step], lep_traj[step]};
+    if (step > 4)
+      speed = 50;
+    moveBothArms(arms, delta, speed);
     getchar();
   }
 
