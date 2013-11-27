@@ -109,11 +109,11 @@ int main()
     printf("\r");
     getCurrentRightArmPos(arms);
     getCurrentLeftArmPos(arms + 3);
-    getCurrentPitchPos(arm + 6);
+    getCurrentPitchPos(arms + 6);
     usleep(20000);
     
     for (int i = 0; i<8; i++)
-      printf("ID %d - %d  - ", i, arms[i]);
+      printf("%d ", arms[i]);
   }
 
   getchar();
